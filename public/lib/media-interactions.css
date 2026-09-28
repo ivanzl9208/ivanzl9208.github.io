@@ -1,0 +1,17 @@
+/* Media/UI only. No selection or input restrictions on the document or text links. */
+@media (any-pointer: coarse) {
+  :where(img, picture, video, canvas, svg, [role="img"], [data-ui-media], .sticker, .emoji-reaction) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* An explicit opt-out also works inside a protected graphic container. */
+  :where([data-native-media], [data-native-media] *,
+    [contenteditable]:not([contenteditable="false"]), [contenteditable]:not([contenteditable="false"]) *,
+    input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select) {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
