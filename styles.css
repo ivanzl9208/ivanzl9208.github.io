@@ -102,8 +102,8 @@ img { display: block; }
 
 @keyframes status-pulse {
   0% { opacity: 0.75; transform: scale(1); }
-  62.5% { opacity: 0; transform: scale(2.4); }
-  100% { opacity: 0; transform: scale(2.4); }
+  62.5% { opacity: 0; transform: scale(2.5); }
+  100% { opacity: 0; transform: scale(2.5); }
 }
 
 .hero { position: relative; width: 100%; margin-inline: auto; }
