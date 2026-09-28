@@ -1,12 +1,10 @@
 // Case videos keep an independent first-frame image until real playback.
-function hydrateDeferredVideo(video, win) {
+function hydrateDeferredVideo(video) {
   const sources = [...video.querySelectorAll('source[data-src]')];
   if (!sources.length) return false;
-  const mobile = win.matchMedia?.('(max-width: 599px)').matches;
   sources.forEach(source => {
-    source.src = mobile && source.dataset.mobileSrc ? source.dataset.mobileSrc : source.dataset.src;
+    source.src = source.dataset.src;
     source.removeAttribute('data-src');
-    source.removeAttribute('data-mobile-src');
   });
   video.preload = 'auto';
   video.load();
@@ -15,11 +13,9 @@ function hydrateDeferredVideo(video, win) {
 
 function mountProjectVideo(video, environment = {}) {
   const win = environment.window || window;
-  const doc = environment.document || win.document;
   const visual = video.parentElement;
-  const poster = video.previousElementSibling;
   const listeners = [];
-  let frame = null, raf = null, probe = null, pending = null, generation = 0, playing = false, destroyed = false;
+  let frame = null, raf = null, pending = null, generation = 0, playing = false, destroyed = false;
   let hydrated = !video.hasAttribute?.('data-deferred-media');
   const listen = (target, type, fn) => {
     target.addEventListener(type, fn);
@@ -31,8 +27,7 @@ function mountProjectVideo(video, environment = {}) {
     playing = false;
     if (frame !== null) video.cancelVideoFrameCallback(frame);
     if (raf !== null) win.cancelAnimationFrame(raf);
-    if (probe !== null) win.clearTimeout(probe);
-    frame = raf = probe = null;
+    frame = raf = null;
     video.classList.remove('is-ready');
     visual.classList.remove('is-video-ready');
   }
@@ -44,38 +39,18 @@ function mountProjectVideo(video, environment = {}) {
     if (destroyed || video.paused || video.error) return;
     playing = true;
     video.classList.remove('is-unavailable');
-    if (frame !== null || raf !== null || probe !== null || video.classList.contains('is-ready')) return;
+    if (frame !== null || raf !== null || video.classList.contains('is-ready')) return;
     const expected = generation;
-    const decodedFrames = () => video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.webkitDecodedFrameCount ?? null;
-    const decodedAtStart = decodedFrames();
     const reveal = () => {
       if (destroyed || expected !== generation) return;
-      if (probe !== null) win.clearTimeout(probe);
-      if (frame !== null) video.cancelVideoFrameCallback(frame);
       frame = raf = null;
-      probe = null;
       if (!playing || video.paused || video.error || video.readyState < 2) return;
       video.classList.add('is-ready');
       visual.classList.add('is-video-ready');
     };
-    const probeDecodedFrame = () => {
-      if (decodedAtStart === null || typeof win.setTimeout !== 'function') return false;
-      let checks = 0;
-      const check = () => {
-        probe = null;
-        if (destroyed || expected !== generation || !playing || video.paused || video.error) return;
-        const decoded = decodedFrames();
-        if (decoded !== null && decoded > decodedAtStart && video.readyState >= 2) reveal();
-        else if (++checks < 60) probe = win.setTimeout(check, 150);
-      };
-      probe = win.setTimeout(check, 350);
-      return true;
-    };
     if (typeof video.requestVideoFrameCallback === 'function') {
       frame = video.requestVideoFrameCallback(reveal);
-      // Some mobile compositors starve the callback behind an opaque poster.
-      probeDecodedFrame();
-    } else if (!probeDecodedFrame()) {
+    } else {
       // Older engines: only after playing, decoded data and a paint opportunity.
       raf = win.requestAnimationFrame(() => { raf = win.requestAnimationFrame(reveal); });
     }
@@ -93,29 +68,10 @@ function mountProjectVideo(video, environment = {}) {
   }
   listen(video, 'playing', onPlaying);
   listen(video, 'loadeddata', play);
-  listen(video, 'canplay', play);
   for (const type of ['error', 'abort']) listen(video, type, unavailable);
-  for (const type of ['emptied', 'loadstart', 'pause', 'waiting', 'stalled']) listen(video, type, fallback);
-  let posterObserver = null;
-  if (poster?.loading === 'lazy') {
-    if (poster.addEventListener) listen(poster, 'error', () => poster.classList.add('is-unavailable'));
-    const warmPoster = () => {
-      poster.loading = 'eager';
-      poster.fetchPriority = 'high';
-      poster.decode?.().catch(() => poster.classList.add('is-unavailable'));
-      posterObserver?.disconnect();
-    };
-    posterObserver = typeof win.IntersectionObserver === 'function'
-      ? new win.IntersectionObserver(([entry]) => { if (entry.isIntersecting) warmPoster(); }, {
-        threshold: 0,
-        rootMargin: `${Math.ceil((win.innerHeight || 800) * 1.5)}px 0px`,
-      })
-      : null;
-    posterObserver?.observe(poster);
-    if (!posterObserver) warmPoster();
-  }
+  for (const type of ['emptied', 'loadstart', 'pause']) listen(video, type, fallback);
   const startNearViewport = () => {
-    if (!hydrated) hydrated = hydrateDeferredVideo(video, win);
+    if (!hydrated) hydrated = hydrateDeferredVideo(video);
     play();
   };
   const observer = typeof win.IntersectionObserver === 'function'
@@ -130,17 +86,12 @@ function mountProjectVideo(video, environment = {}) {
   // A cached autoplay video may already be running when this script runs.
   if (!video.paused && video.readyState >= 2) onPlaying();
   const resume = () => { play(); if (!video.paused) onPlaying(); };
-  if (doc?.addEventListener) listen(doc, 'visibilitychange', () => {
-    if (doc.visibilityState === 'hidden') fallback();
-    else resume();
-  });
   listen(win, 'pageshow', resume);
   listen(win, 'pagehide', event => { if (event.persisted) fallback(); else destroy(); });
   function destroy() {
     destroyed = true;
     fallback();
     observer?.disconnect();
-    posterObserver?.disconnect();
     listeners.forEach(remove => remove());
   }
   return { destroy };
@@ -168,7 +119,7 @@ function mountAmbientVideo(video, environment = {}) {
     else raf = win.requestAnimationFrame(() => { raf = win.requestAnimationFrame(reveal); });
   };
   const start = () => {
-    if (!hydrated) hydrated = hydrateDeferredVideo(video, win);
+    if (!hydrated) hydrated = hydrateDeferredVideo(video);
     if (!hydrated || !video.paused) return;
     try { Promise.resolve(video.play()).catch(() => {}); } catch { /* Keep the poster. */ }
   };
