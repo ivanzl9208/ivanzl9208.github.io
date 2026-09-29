@@ -12,7 +12,6 @@ export function mountMobilePortrait(container, environment = {}) {
   const hero = container.closest(".hero") || container;
   const hapticSwitch = container.querySelector(".hero-haptic-switch");
   let video = null;
-  let timer = null;
   let frameCallback = null;
   let revision = 0;
   let activePlay = false;
@@ -25,6 +24,12 @@ export function mountMobilePortrait(container, environment = {}) {
   let press = null;
   let suppressPointerClick = false;
   let allowHapticClick = false;
+  const enterRatio = .5;
+  const leaveRatio = .1;
+  const outsideDwell = 1700;
+  let intersectionRatio = 0;
+  let autoAvailable = true;
+  let outsideSince = null;
   const listeners = [];
 
   function listen(target, event, handler, options) {
@@ -45,8 +50,6 @@ export function mountMobilePortrait(container, environment = {}) {
   function stop({ keepFrame = false } = {}) {
     cancelPress();
     revision += 1;
-    if (timer !== null) win.clearTimeout(timer);
-    timer = null;
     activePlay = false;
     manualPlay = false;
     if (!keepFrame) container.removeAttribute("data-mobile-video-ready");
@@ -89,10 +92,9 @@ export function mountMobilePortrait(container, environment = {}) {
   }
 
   function onEnded() {
-    // Keep the decoded first frame visible during the repeat pause instead of
+    // Keep the decoded first frame visible after the single playback instead of
     // swapping back to a separately color-managed image.
     stop({ keepFrame: true });
-    scheduleRepeat();
   }
 
   function ensureVideo() {
@@ -178,21 +180,10 @@ export function mountMobilePortrait(container, environment = {}) {
     }
   }
 
-  function scheduleRepeat() {
-    if (!eligible() || timer !== null || activePlay) return;
-    timer = win.setTimeout(() => {
-      timer = null;
-      playNow();
-    }, 5000);
-  }
-
   function onTap() {
     if (!touch.matches || destroyed || doc.visibilityState !== "visible") return;
     if (activePlay) return;
     visible = true;
-    if (timer !== null) {
-      stop({ keepFrame: container.hasAttribute("data-mobile-video-ready") });
-    }
     playNow(true);
   }
 
@@ -288,14 +279,35 @@ export function mountMobilePortrait(container, environment = {}) {
       if (!allowed()) releaseVideo();
       return;
     }
-    if (timer === null) playNow();
+  }
+
+  function tryAutoPlay() {
+    if (!autoAvailable || intersectionRatio < enterRatio || !eligible()) return;
+    // This entry is spent even if a manual play is already in progress.
+    autoAvailable = false;
+    if (!activePlay) playNow();
+  }
+
+  function updateViewport(entries) {
+    for (const entry of entries) {
+      intersectionRatio = entry.isIntersecting ? entry.intersectionRatio : 0;
+      const at = entry.time ?? win.performance.now();
+      if (intersectionRatio <= leaveRatio) {
+        if (activePlay) stop();
+        if (!autoAvailable && outsideSince === null) outsideSince = at;
+      } else if (intersectionRatio > leaveRatio && outsideSince !== null) {
+        if (at - outsideSince >= outsideDwell) autoAvailable = true;
+        outsideSince = null;
+      }
+    }
+    visible = intersectionRatio > leaveRatio;
+    sync();
+    tryAutoPlay();
   }
 
   const observer = typeof win.IntersectionObserver === "function"
-    ? new win.IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting && entry.intersectionRatio > 0;
-      sync();
-    }, { threshold: 0 })
+    ? new win.IntersectionObserver(updateViewport,
+      { threshold: [0, leaveRatio, enterRatio] })
     : null;
 
   function destroy() {
@@ -330,9 +342,10 @@ export function mountMobilePortrait(container, environment = {}) {
   listen(win, "scroll", cancelPress, { passive: true });
   listen(win, "blur", cancelPress);
   listen(win, "resize", cancelPress);
-  listen(touch, "change", sync);
-  listen(reducedMotion, "change", sync);
-  if (connection?.addEventListener) listen(connection, "change", sync);
+  const syncAutoPreference = () => { sync(); tryAutoPlay(); };
+  listen(touch, "change", syncAutoPreference);
+  listen(reducedMotion, "change", syncAutoPreference);
+  if (connection?.addEventListener) listen(connection, "change", syncAutoPreference);
   listen(doc, "visibilitychange", sync);
   listen(win, "pagehide", event => {
     if (!event.persisted) {
