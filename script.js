@@ -478,7 +478,7 @@ function initWebGLMaskReveal(container, canvas, image) {
   });
   image.addEventListener("load", portraitDemo.refresh, { once: true });
 
-  window.addEventListener("pagehide", () => {
+  HeroRevealInput.cleanupOnPageDiscard(window, () => {
     portraitDemo.destroy();
     revealInput.destroy();
     image.removeEventListener("load", portraitDemo.refresh);
@@ -491,7 +491,7 @@ function initWebGLMaskReveal(container, canvas, image) {
     gl.deleteBuffer(quadBuffer);
     gl.deleteProgram(maskProgram);
     gl.deleteProgram(revealProgram);
-  }, { once: true });
+  });
 
   return true;
 }
@@ -751,14 +751,14 @@ function initRevealRenderers() {
     });
     maskRevealImage.addEventListener("load", portraitDemo.refresh, { once: true });
 
-    window.addEventListener("pagehide", () => {
+    HeroRevealInput.cleanupOnPageDiscard(window, () => {
       portraitDemo.destroy();
       revealInput.destroy();
       maskRevealImage.removeEventListener("load", portraitDemo.refresh);
       if (revealFrame) window.cancelAnimationFrame(revealFrame);
       revealResizeObserver.disconnect();
       revealVisibilityObserver.disconnect();
-    }, { once: true });
+    });
   }
 }
 if (revealViewport.matches) initRevealRenderers();

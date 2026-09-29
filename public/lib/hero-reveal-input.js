@@ -1,6 +1,14 @@
 /* Shared input adapter for the existing WebGL and 2D portrait renderers.
  * Touch never captures the pointer or prevents the browser's vertical pan. */
 const HeroRevealInput = (() => {
+  function cleanupOnPageDiscard(win, cleanup) {
+    const onPagehide = event => {
+      if (event.persisted) return;
+      win.removeEventListener('pagehide', onPagehide);
+      cleanup();
+    };
+    win.addEventListener('pagehide', onPagehide);
+  }
   function bind({ surface, target, enabled, hover, move, end }, environment = {}) {
     const win = environment.window || window;
     const doc = environment.document || document;
@@ -56,6 +64,6 @@ const HeroRevealInput = (() => {
     listen(doc, 'visibilitychange', () => { if (doc.visibilityState !== 'visible') reset(); });
     return { reset, destroy() { reset(); listeners.forEach(remove => remove()); } };
   }
-  return { bind };
+  return { bind, cleanupOnPageDiscard };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = HeroRevealInput;
