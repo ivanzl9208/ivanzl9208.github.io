@@ -5,7 +5,7 @@ const revealReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)"
 const revealViewport = window.matchMedia("(hover: hover) and (pointer: fine)");
 const revealHoverPointer = revealViewport;
 if (maskReveal) {
-  import("./public/lib/hero-mobile-idle.js?v=20260929-2")
+  import("./public/lib/hero-mobile-idle.js?v=20260930-1")
     .then(({ mountMobilePortrait }) => mountMobilePortrait(maskReveal))
     .catch(() => { /* Keep the static picture if the enhancement is unavailable. */ });
 }

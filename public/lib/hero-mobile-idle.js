@@ -30,6 +30,7 @@ export function mountMobilePortrait(container, environment = {}) {
   let intersectionRatio = 0;
   let autoAvailable = true;
   let outsideSince = null;
+  let restoreTimer = null;
   const listeners = [];
 
   function listen(target, event, handler, options) {
@@ -313,6 +314,8 @@ export function mountMobilePortrait(container, environment = {}) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    if (restoreTimer !== null) win.clearTimeout(restoreTimer);
+    restoreTimer = null;
     stop();
     observer?.disconnect();
     listeners.splice(0).forEach(remove => remove());
@@ -352,6 +355,8 @@ export function mountMobilePortrait(container, environment = {}) {
       destroy();
       return;
     }
+    if (restoreTimer !== null) win.clearTimeout(restoreTimer);
+    restoreTimer = null;
     suspended = true;
     visible = false;
     stop();
@@ -360,7 +365,15 @@ export function mountMobilePortrait(container, environment = {}) {
   listen(win, "pageshow", () => {
     if (!suspended) return;
     suspended = false;
-    observer?.observe(hero);
+    // Back from a case is a new visit. Wait for Safari to restore scroll position
+    // before observing: its first BFCache frame can briefly report Hero at 100%.
+    autoAvailable = true;
+    outsideSince = null;
+    intersectionRatio = 0;
+    restoreTimer = win.setTimeout(() => {
+      restoreTimer = null;
+      if (!destroyed && !suspended) observer?.observe(hero);
+    }, 200);
   });
   observer?.observe(hero);
   return destroy;
