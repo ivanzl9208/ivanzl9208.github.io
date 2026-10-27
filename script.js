@@ -913,6 +913,35 @@ ProjectMediaPress.bind('.vibecoded-card .project-media');
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const reactionStickers = [...document.querySelectorAll(".sticker[data-reaction-pool]")];
 const reactionCollage = document.querySelector(".collage");
+// Older Windows emoji fonts can render some reaction sequences as empty boxes.
+// Windows-only SVG fallback: Twemoji v14.0.2, CC BY 4.0; see public/licenses/twemoji-reactions.txt.
+const useReactionArtwork = /Windows/i.test(navigator.userAgent || "") ||
+  /^Win/i.test(navigator.userAgentData?.platform || navigator.platform || "");
+const reactionArtworkPreloads = [];
+function reactionArtworkUrl(emoji) {
+  const filename = Array.from(emoji.replace(/\uFE0F/g, ""), symbol => symbol.codePointAt(0).toString(16)).join("-");
+  return `public/assets/life/reactions/${filename}.svg`;
+}
+if (useReactionArtwork && reactionCollage) {
+  const warmReactionArtwork = () => {
+    const emoji = new Set(reactionStickers.flatMap(sticker => sticker.dataset.reactionPool.split(",")));
+    for (const symbol of emoji) {
+      const image = new Image();
+      image.src = reactionArtworkUrl(symbol);
+      reactionArtworkPreloads.push(image);
+    }
+  };
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      observer.disconnect();
+      warmReactionArtwork();
+    }, { rootMargin: "800px" });
+    observer.observe(reactionCollage);
+  } else {
+    warmReactionArtwork();
+  }
+}
 const stickerFeedback = {
   success: { particles: 11 },
   buzz: { particles: 23 },
@@ -989,7 +1018,17 @@ function emitEmojiReactions(sticker, particleCount) {
 
     reaction.className = "emoji-reaction";
     reaction.setAttribute("aria-hidden", "true");
-    reaction.textContent = pool[Math.floor(Math.random() * pool.length)];
+    const emoji = pool[Math.floor(Math.random() * pool.length)];
+    if (useReactionArtwork) {
+      const image = document.createElement("img");
+      image.className = "emoji-reaction-art";
+      image.src = reactionArtworkUrl(emoji);
+      image.alt = "";
+      image.draggable = false;
+      reaction.append(image);
+    } else {
+      reaction.textContent = emoji;
+    }
     reaction.style.left = `${startX}px`;
     reaction.style.top = `${startY}px`;
     reaction.style.setProperty("--reaction-x", `${randomBetween(-horizontalSpread, horizontalSpread).toFixed(1)}px`);

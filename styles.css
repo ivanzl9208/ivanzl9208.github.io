@@ -87,6 +87,7 @@ a { color: inherit; text-decoration: none; }
 img { display: block; }
 :is(.projects, .vibecoded, .about) img { -webkit-user-drag: none; -webkit-user-select: none; user-select: none; }
 .mobile-only { display: none; }
+.unbroken-word { white-space: nowrap; }
 .page { position: relative; z-index: 1; width: min(100%, 1440px); min-height: 100vh; margin-inline: auto; overflow: hidden; background: transparent; }
 .content { width: 800px; margin-inline: auto; }
 
@@ -227,6 +228,7 @@ h1, .section-title, .project h2, .contact h2 { font-family: Benzin, Inter, sans-
 .collage.is-parallax-active [data-parallax-speed] { will-change: transform; }
 
 .emoji-reaction { position: absolute; z-index: 20; display: block; width: 1em; height: 1em; pointer-events: none; user-select: none; opacity: 0; font-family: Inter, sans-serif; font-size: var(--reaction-size, 32px); line-height: 1; filter: drop-shadow(0 5px 10px rgba(0,0,0,.2)); transform: translate(-50%, -50%) scale(.38); animation: emoji-reaction-burst var(--reaction-duration, 650ms) cubic-bezier(.22, 1, .36, 1) var(--reaction-delay, 0ms) forwards; will-change: transform, opacity; }
+.emoji-reaction-art { display: block; width: 100%; height: 100%; object-fit: contain; }
 
 @keyframes sticker-baby-sway {
   0%, 100% { transform: rotate(-4deg) translateY(1px); }
@@ -259,12 +261,12 @@ h1, .section-title, .project h2, .contact h2 { font-family: Benzin, Inter, sans-
 }
 
 .contact { margin-top: 75px; }
-.contact h2 { margin: 0 auto; color: var(--muted); font-size: 48px; line-height: 56px; text-align: center; }
+.contact h2 { --contact-line-height: 56px; margin: 0 auto; color: var(--muted); font-size: 48px; line-height: var(--contact-line-height); text-align: center; }
 .contact a { color: var(--text); }
 .contact-keep-together { white-space: nowrap; }
 /* Keep descender room outside the inline layout; each rolling copy includes the same room. */
-.contact-roll { display: inline-flex; flex-direction: column; vertical-align: baseline; box-sizing: content-box; height: 1lh; padding-bottom: .15em; margin-bottom: -.15em; overflow: hidden; white-space: nowrap; }
-.contact-roll-line { display: block; flex: 0 0 calc(1lh + .15em); height: calc(1lh + .15em); line-height: inherit; }
+.contact-roll { display: inline-flex; flex-direction: column; vertical-align: baseline; box-sizing: content-box; height: var(--contact-line-height); padding-bottom: .15em; margin-bottom: -.15em; overflow: hidden; white-space: nowrap; }
+.contact-roll-line { display: block; flex: 0 0 calc(var(--contact-line-height) + .15em); height: calc(var(--contact-line-height) + .15em); line-height: inherit; }
 .footer { margin-top: 236px; padding-bottom: 48px; color: var(--muted); font-size: 14px; line-height: 20px; text-align: center; }
 /* One anchor-menu system: contacts, optional back action, or modal close action. */
 :is(.contact-island, .anchor-menu) { position: fixed; z-index: 50; left: 50%; bottom: max(40px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 4px; opacity: 0; visibility: hidden; pointer-events: none; transform: translate3d(-50%, calc(100% + 64px), 0) scale(.96); transform-origin: 50% 100%; transition: transform 560ms cubic-bezier(.22,1,.36,1), opacity 280ms ease, visibility 0s linear 560ms; }
@@ -436,7 +438,7 @@ h1, .section-title, .project h2, .contact h2 { font-family: Benzin, Inter, sans-
   .sticker-boxing { left: 53.786px; top: 348.786px; font-size: 121.5px; }
   .sticker-argentina { left: 284.35px; top: 349.35px; font-size: 94.32px; }
   .contact { margin-top: 96px; }
-  .contact h2 { width: 100%; font-size: 28px; line-height: 36px; }
+  .contact h2 { --contact-line-height: 36px; width: 100%; font-size: 28px; }
   .footer { margin-top: 156px; padding-bottom: 24px; font-size: 14px; line-height: 20px; }
   :is(.contact-island, .anchor-menu) { bottom: max(32px, env(safe-area-inset-bottom)); }
   :is(.contact-island, .anchor-menu-contacts) { width: 234px; padding-inline: 24px; gap: 12px; }
